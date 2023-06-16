@@ -14,14 +14,7 @@ from selenium.webdriver.common.keys import Keys
 os.environ['http_proxy'] = 'http://127.0.0.1:9999'
 os.environ['https_proxy'] = 'http://127.0.0.1:9999'
 
-
-
-
-output = './tweet/tweets_2020_0501_0530_live.csv'
-query = 'bitcoin until:2020-05-30 since:2020-05-01 -filter:replies lang:en'
-
-
-
+people = 'BitcoinFear'
 
 def main():
     options = webdriver.ChromeOptions()
@@ -40,7 +33,7 @@ def main():
         time.sleep(3)
         next_role = WebDriverWait(browser, 30).until(expected_conditions.visibility_of_element_located((By.XPATH, '//*[@id="layers"]/div[2]/div/div/div[2]/div/div[2]/div/div/div/div/div/div[1]')))
         next_role.click()
-        time.sleep(3)
+        time.sleep(5)
     except:
         return 0
     HEADER = ''
@@ -53,7 +46,7 @@ def main():
     if HEADER == '':
         return 0
     
-    
+    output = f'./tweet/people/@{people}.csv'
     exist = 0
     if os.path.exists(output):
         df = pd.read_csv(output)
@@ -117,11 +110,11 @@ def main():
         'simple_quoted_tweet':'true',
         'tweet_search_mode':'live',
         # 'q': '#bitcoin until:2022-04-02 since:2022-04-01 lang:en',
-        'q': query,
+        'q': f'(from:{people})',
         # 'cursor': 'DAACCgACFuZuD_-AJxAKAAMW5m4P_3_Y8AgABAAAAAILAAUAAADoRW1QQzZ3QUFBZlEvZ0dKTjB2R3AvQUFBQUJNVTlMVkp3RmNRQWhUMHZleUNWeEFIRlBTMUV2N1hzQUlVOUxXM3psWlFBeFQwdHlEcUZYQUVGUFN0VUd5VlVBQVU5TGx2VzVmUUNSVDB0VldUbWpBRkZQUzRBV0VYc0FrVTlNQkhHVlJ3QVJUMHVRNUVGWUFDRlBTdHZDblhvQUVVOUx0ZjZCV0FBQlQwclBKbUY4QUdGUFMvakFZWDBBTVU5TFRMUXRSZ0F4VDB2TEZRMUdBR0ZQU3d4QmxYMEFVVTlMOFdsQldRQkE9PQgABgAAAAAIAAcAAAAADAAICgABFPSs8mYXwAYAAAA',
         'vertical': 'default',
         'query_source': 'typed_query',
-        'count': '20',
+        'count': '200',
         'requestContext': 'launch',
         'pc': '1',
         'spelling_corrections': '1',

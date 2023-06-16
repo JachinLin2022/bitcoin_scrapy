@@ -16,13 +16,6 @@ os.environ['https_proxy'] = 'http://127.0.0.1:9999'
 
 
 
-
-output = './tweet/tweets_2020_0501_0530_live.csv'
-query = 'bitcoin until:2020-05-30 since:2020-05-01 -filter:replies lang:en'
-
-
-
-
 def main():
     options = webdriver.ChromeOptions()
     options.add_argument('--ignore-certificate-error')
@@ -40,32 +33,27 @@ def main():
         time.sleep(3)
         next_role = WebDriverWait(browser, 30).until(expected_conditions.visibility_of_element_located((By.XPATH, '//*[@id="layers"]/div[2]/div/div/div[2]/div/div[2]/div/div/div/div/div/div[1]')))
         next_role.click()
-        time.sleep(3)
+        time.sleep(5)
     except:
         return 0
     HEADER = ''
     for request in browser.requests:
         if request.response and "x-csrf-token" in request.headers and 'twitter.com/i/api/2/' in request.url:
+            print(request.url)
             HEADER = request.headers
             # print(request.headers)
-            # break
+            break
     browser.quit()
     if HEADER == '':
         return 0
     
-    
+    output = './tweet/tweets_user.csv'
     exist = 0
     if os.path.exists(output):
         df = pd.read_csv(output)
         exist = 1
     else:
         df = pd.DataFrame({}, columns=[
-            'id','full_text', 
-            'created_at',
-            'favorite_count',
-            'quote_count',
-            'reply_count',
-            'retweet_count',
             'user_id',
             'user_name',
             'user_screen_name',
@@ -75,7 +63,7 @@ def main():
             'user_favorite_count',
             'user_media_count',
             'cursor'
-            ])
+        ])
         exist = 0
 
 
@@ -116,12 +104,12 @@ def main():
         'send_error_codes':'true',
         'simple_quoted_tweet':'true',
         'tweet_search_mode':'live',
-        # 'q': '#bitcoin until:2022-04-02 since:2022-04-01 lang:en',
-        'q': query,
+        'q': 'bitcoin',
+        'result_filter': 'user',
         # 'cursor': 'DAACCgACFuZuD_-AJxAKAAMW5m4P_3_Y8AgABAAAAAILAAUAAADoRW1QQzZ3QUFBZlEvZ0dKTjB2R3AvQUFBQUJNVTlMVkp3RmNRQWhUMHZleUNWeEFIRlBTMUV2N1hzQUlVOUxXM3psWlFBeFQwdHlEcUZYQUVGUFN0VUd5VlVBQVU5TGx2VzVmUUNSVDB0VldUbWpBRkZQUzRBV0VYc0FrVTlNQkhHVlJ3QVJUMHVRNUVGWUFDRlBTdHZDblhvQUVVOUx0ZjZCV0FBQlQwclBKbUY4QUdGUFMvakFZWDBBTVU5TFRMUXRSZ0F4VDB2TEZRMUdBR0ZQU3d4QmxYMEFVVTlMOFdsQldRQkE9PQgABgAAAAAIAAcAAAAADAAICgABFPSs8mYXwAYAAAA',
         'vertical': 'default',
         'query_source': 'typed_query',
-        'count': '20',
+        'count': '400',
         'requestContext': 'launch',
         'pc': '1',
         'spelling_corrections': '1',
@@ -177,7 +165,6 @@ def main():
 
 
     zero_count = 0
-    res = []
     for i in range(1000):
         # r = requests.get(url=url,params=params,headers=header,verify=False)
         try:
@@ -186,29 +173,29 @@ def main():
             return 0
         print(r.status_code)
         msg = json.loads(r.content)
-        tweets = msg['globalObjects']['tweets']
         users = msg['globalObjects']['users']
         
         
-        if len(tweets) == 0:
+        if len(users) == 0:
             zero_count = zero_count + 1
         else:
             zero_count = 0
         if zero_count == 10:
-            print('no more tweets')
+            print('no more users')
             return 1
         
         # print(users.keys())
 
         # 获取下一个分页的cursor
         for ins in msg['timeline']['instructions']:
+
             if 'addEntries' in ins:
                 cursors = ins['addEntries']['entries']
                 for cursor in cursors:
                     if cursor['entryId'].find('cursor-bottom') >= 0:
                         # print(cursor['content']['operation']['cursor']['value'])
                         params['cursor'] = cursor['content']['operation']['cursor']['value']
-            else:
+            elif 'replaceEntry' in ins:
                 cursors = ins['replaceEntry']['entry']
                 if cursors['entryId'].find('cursor-bottom') >= 0:
                     params['cursor'] = cursors['content']['operation']['cursor']['value']
@@ -228,24 +215,14 @@ def main():
         
         
         
-        # 获取每条帖子的信息
-        for tweet_time_line in tweets.keys():
-            tweet = tweets[tweet_time_line]
-
+        for user_time_line in users.keys():
+            user = users[user_time_line]
             
             # 获取发帖用户的信息
-            user_id_str = tweet['user_id_str']
-            user = users[user_id_str]
+            user_id_str = user['id_str']
             
-            scrapy_tweet = {
-                'id': tweet_time_line,
-                'full_text': tweet['full_text'],
-                'created_at': tweet['created_at'],
-                'favorite_count': tweet['favorite_count'],
-                'quote_count':tweet['quote_count'],
-                'reply_count':tweet['reply_count'],
-                'retweet_count':tweet['retweet_count'],
-                'user_id': user_id_str,
+            scrapy_user = {
+                'user_id': user_time_line,
                 'user_name': user['name'],
                 'user_screen_name': user['screen_name'],
                 'user_description': user['description'],
@@ -255,9 +232,9 @@ def main():
                 'user_media_count': user['media_count'],
                 'cursor': params['cursor']
             }
-            res.append(scrapy_tweet)
-            scrapy_tweet = pd.DataFrame([scrapy_tweet])
-            df = pd.concat([df, scrapy_tweet], ignore_index=True)
+
+            scrapy_user = pd.DataFrame([scrapy_user])
+            df = pd.concat([df, scrapy_user], ignore_index=True)
 
 
         if i > 0 and i % 10 ==0 :
